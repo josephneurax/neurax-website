@@ -9,8 +9,98 @@ interface Message {
   timestamp: Date;
 }
 
-// Composant PhoneMockup3D simple intégré
+// Déclaration TypeScript pour Vapi
+declare global {
+  interface Window {
+    Vapi: any;
+  }
+}
+
+// Configuration Vapi
+const VAPI_CONFIG = {
+  publicKey: "70c92dbd-2937-4da0-8884-edc63dc82a2e",
+  assistantId: "bde29016-68ab-4ec6-9d81-147af8678af4"
+};
+
+// Composant PhoneMockup3D avec Vapi intégré
 function PhoneMockup3D() {
+  const [isCallActive, setIsCallActive] = useState(false);
+  const [callStatus, setCallStatus] = useState('Prêt');
+  const [callDuration, setCallDuration] = useState(0);
+  const vapiInstanceRef = useRef<any>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Initialiser Vapi au chargement
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.Vapi) {
+      vapiInstanceRef.current = new window.Vapi(VAPI_CONFIG.publicKey);
+    }
+  }, []);
+
+  // Nettoyer le timer
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
+
+  const startCall = async () => {
+    if (isCallActive) return;
+
+    try {
+      setCallStatus('Connexion...');
+      
+      // Démarrer l'appel Vapi
+      if (vapiInstanceRef.current) {
+        await vapiInstanceRef.current.start(VAPI_CONFIG.assistantId);
+        
+        setIsCallActive(true);
+        setCallStatus('En ligne');
+        setCallDuration(0);
+
+        // Démarrer le compteur de durée
+        timerRef.current = setInterval(() => {
+          setCallDuration(prev => prev + 1);
+        }, 1000);
+      } else {
+        throw new Error('Vapi non initialisé');
+      }
+    } catch (error) {
+      console.error('Erreur lors du démarrage de l\'appel:', error);
+      setCallStatus('Erreur - Réessayez');
+      setTimeout(() => setCallStatus('Prêt'), 2000);
+    }
+  };
+
+  const endCall = () => {
+    if (!isCallActive) return;
+
+    if (vapiInstanceRef.current) {
+      vapiInstanceRef.current.stop();
+    }
+
+    setIsCallActive(false);
+    setCallStatus('Terminé');
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    setTimeout(() => {
+      setCallStatus('Prêt');
+      setCallDuration(0);
+    }, 2000);
+  };
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <motion.div
       className="relative"
@@ -34,21 +124,64 @@ function PhoneMockup3D() {
           <div className="p-6 flex flex-col items-center justify-center h-full">
             <motion.div
               className="w-20 h-20 rounded-full bg-gradient-to-br from-[#00D4FF] to-[#7B61FF] flex items-center justify-center mb-6"
-              animate={{ scale: [1, 1.1, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
+              animate={{ scale: isCallActive ? [1, 1.1, 1] : 1 }}
+              transition={{ duration: 2, repeat: isCallActive ? Infinity : 0 }}
             >
               <Phone className="w-10 h-10" />
             </motion.div>
             
             <h4 className="text-white text-xl font-bold mb-2">Réceptionniste IA</h4>
-            <p className="text-gray-400 text-center text-sm mb-6">Testez l'assistant vocal intelligent</p>
+            <p className="text-gray-400 text-center text-sm mb-2">
+              {callStatus === 'Prêt' && 'Testez l\'assistant vocal intelligent'}
+              {callStatus === 'Connexion...' && 'Connexion en cours...'}
+              {callStatus === 'En ligne' && 'Parlez maintenant !'}
+              {callStatus === 'Terminé' && 'Appel terminé'}
+              {callStatus === 'Erreur - Réessayez' && 'Erreur de connexion'}
+            </p>
+
+            {/* Durée de l'appel */}
+            {isCallActive && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-white text-2xl font-mono mb-4"
+              >
+                {formatDuration(callDuration)}
+              </motion.div>
+            )}
+
+            {/* Statut visuel */}
+            <div className="flex items-center gap-2 mb-6">
+              <motion.div
+                className={`w-2 h-2 rounded-full ${
+                  callStatus === 'Prêt' ? 'bg-blue-400' :
+                  callStatus === 'Connexion...' ? 'bg-yellow-400' :
+                  callStatus === 'En ligne' ? 'bg-green-400' :
+                  callStatus === 'Terminé' ? 'bg-gray-400' :
+                  'bg-red-400'
+                }`}
+                animate={
+                  callStatus === 'En ligne' || callStatus === 'Connexion...'
+                    ? { scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }
+                    : {}
+                }
+                transition={{ duration: 1, repeat: Infinity }}
+              />
+              <span className="text-gray-400 text-xs">{callStatus}</span>
+            </div>
             
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="px-6 py-3 bg-green-500 rounded-full text-white font-semibold shadow-lg"
+              onClick={isCallActive ? endCall : startCall}
+              className={`px-6 py-3 rounded-full text-white font-semibold shadow-lg transition-colors ${
+                isCallActive 
+                  ? 'bg-red-500 hover:bg-red-600' 
+                  : 'bg-green-500 hover:bg-green-600'
+              }`}
+              disabled={callStatus === 'Connexion...'}
             >
-              ☎️ Appeler maintenant
+              {isCallActive ? '✖️ Raccrocher' : '☎️ Appeler maintenant'}
             </motion.button>
           </div>
         </div>
