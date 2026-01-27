@@ -3,7 +3,7 @@ import { Menu, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 interface HeaderProps {
-  onOpenQuestionnaire: (service?: 'website' | 'vocal') => void;
+  onOpenQuestionnaire?: (service?: 'website' | 'vocal') => void;
 }
 
 interface ServiceModalProps {
@@ -220,7 +220,7 @@ export function Header({ onOpenQuestionnaire }: HeaderProps) {
         onClose={() => setShowServiceModal(false)}
         onSelectService={(service) => {
           setShowServiceModal(false);
-          onOpenQuestionnaire(service);
+          onOpenQuestionnaire?.(service);
         }}
       />
     </motion.header>
