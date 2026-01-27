@@ -13,6 +13,7 @@ interface Message {
 declare global {
   interface Window {
     Vapi: any;
+    gtag: any;
   }
 }
 
@@ -52,7 +53,7 @@ function PhoneMockup3D() {
     try {
       setCallStatus('Connexion...');
       
-      // Démarrer l'appel Vapi - CORRECTION ICI !
+      // Démarrer l'appel Vapi - CORRIGÉ ICI !
       if (vapiInstanceRef.current) {
         await vapiInstanceRef.current.start({
           assistantId: VAPI_CONFIG.assistantId
@@ -68,8 +69,8 @@ function PhoneMockup3D() {
         }, 1000);
 
         // Track dans Google Analytics
-        if (typeof gtag !== 'undefined') {
-          gtag('event', 'vapi_call_started', {
+        if (typeof window.gtag !== 'undefined') {
+          window.gtag('event', 'vapi_call_started', {
             event_category: 'engagement',
             event_label: 'Réceptionniste IA'
           });
@@ -100,8 +101,8 @@ function PhoneMockup3D() {
     }
 
     // Track dans Google Analytics
-    if (typeof gtag !== 'undefined') {
-      gtag('event', 'vapi_call_ended', {
+    if (typeof window.gtag !== 'undefined') {
+      window.gtag('event', 'vapi_call_ended', {
         event_category: 'engagement',
         event_label: 'Réceptionniste IA'
       });
