@@ -52,9 +52,11 @@ function PhoneMockup3D() {
     try {
       setCallStatus('Connexion...');
       
-      // Démarrer l'appel Vapi
+      // Démarrer l'appel Vapi - CORRECTION ICI !
       if (vapiInstanceRef.current) {
-        await vapiInstanceRef.current.start(VAPI_CONFIG.assistantId);
+        await vapiInstanceRef.current.start({
+          assistantId: VAPI_CONFIG.assistantId
+        });
         
         setIsCallActive(true);
         setCallStatus('En ligne');
@@ -64,6 +66,14 @@ function PhoneMockup3D() {
         timerRef.current = setInterval(() => {
           setCallDuration(prev => prev + 1);
         }, 1000);
+
+        // Track dans Google Analytics
+        if (typeof gtag !== 'undefined') {
+          gtag('event', 'vapi_call_started', {
+            event_category: 'engagement',
+            event_label: 'Réceptionniste IA'
+          });
+        }
       } else {
         throw new Error('Vapi non initialisé');
       }
@@ -87,6 +97,14 @@ function PhoneMockup3D() {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
+    }
+
+    // Track dans Google Analytics
+    if (typeof gtag !== 'undefined') {
+      gtag('event', 'vapi_call_ended', {
+        event_category: 'engagement',
+        event_label: 'Réceptionniste IA'
+      });
     }
 
     setTimeout(() => {
